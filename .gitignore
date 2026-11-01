@@ -1,0 +1,24 @@
+# Dependencies and build output
+/node_modules/
+/.next/
+/out/
+/build/
+/coverage/
+*.tsbuildinfo
+/next-env.d.ts
+
+# Environment files (only the empty template belongs in source control)
+.env*
+!.env.example
+
+# Local tooling and logs
+/.vercel/
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.pem
+
+# Supabase local CLI state
+supabase/.temp/

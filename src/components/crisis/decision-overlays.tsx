@@ -1,0 +1,12 @@
+"use client";
+import { motion,useReducedMotion } from "motion/react";
+import type { CrisisSnapshot } from "@/types/crisis";
+import type { Intention } from "@/lib/game-server/commands";
+export function VotingOverlay({snapshot,remaining,send,pending}:{snapshot:CrisisSnapshot;remaining:number|null;send:(intent:Intention)=>void;pending:boolean}) {
+  const reduced=useReducedMotion();const own=snapshot.operators.find(player=>player.presenceId===snapshot.self.playerId)?.vote;
+  return <motion.section className="voting-overlay" aria-label="Decision required" initial={reduced?false:{opacity:0,y:12}} animate={{opacity:1,y:0}}><div><p className="eyebrow text-emergency">DECISION REQUIRED / NORMAL VOTE</p><h2>{snapshot.selected?.title}</h2><p className="mt-4 text-sm text-muted">Three approvals authorize this response. Submitted votes are final.</p></div><p className={`vote-clock ${(remaining??99)<=10?"text-emergency":""}`}>00:{String(remaining??0).padStart(2,"0")}</p><div className="vote-roster" aria-live="polite" aria-atomic="false">{snapshot.operators.map(player=><div key={player.presenceId}><span>{player.name}</span><strong className={player.vote==="approve"?"text-success":player.vote==="reject"?"text-emergency":"text-muted"}>{player.vote==="approve"?"APPROVED":player.vote==="reject"?"REJECTED":"…"}</strong></div>)}</div><div className="vote-actions"><button className="command-button" disabled={pending||!!own||remaining===0} onClick={()=>send({type:"vote",choice:"approve"})}>APPROVE</button><button className="command-button" disabled={pending||!!own||remaining===0} onClick={()=>send({type:"vote",choice:"reject"})}>REJECT</button>{own&&<span className="eyebrow text-muted">VOTE RECORDED · FINAL</span>}</div></motion.section>;
+}
+export function ConsequenceOverlay({snapshot}:{snapshot:CrisisSnapshot}) {
+  const reduced=useReducedMotion();const result=snapshot.consequence!;
+  return <motion.section className="consequence-overlay" initial={reduced?false:{opacity:0,scale:.98}} animate={{opacity:1,scale:1}} aria-live="polite"><p className={`eyebrow ${result.authorized?"text-technical":"text-emergency"}`}>{result.authorized?(result.custom?"CUSTOM RESPONSE AUTHORIZED":"DECISION AUTHORIZED"):"DECISION REJECTED"}</p><h2>{result.title}</h2><p>{result.description}</p><div className="consequence-deltas">{Object.entries(result.deltas).filter(([,value])=>value!==0).map(([key,value])=><span key={key}>{key.toUpperCase()} <strong className={value>0?"text-success":"text-emergency"}>{value>0?"▲ +":"▼ "}{value}</strong></span>)}</div></motion.section>;
+}

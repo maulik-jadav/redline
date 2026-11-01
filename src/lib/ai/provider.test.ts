@@ -1,0 +1,12 @@
+import { afterEach,expect,it,vi } from "vitest";
+vi.mock("server-only",()=>({}));
+import { classify,configuredProvider,narrative,boundedCall,classificationSchema } from "./provider";
+import type { GameMasterProvider } from "./provider";
+afterEach(()=>{vi.unstubAllEnvs();vi.useRealTimers();});
+const valid={actionCategory:"grid_stabilization",recommendedEffects:{grid:4,safety:0,economy:-2,trust:0,cascadeRisk:-5},shortExplanation:"Reduce noncritical load."};
+const provider=(output:unknown):GameMasterProvider=>({classifyAction:async()=>output,generateNarrative:async()=>output});
+it("accepts a bounded structured classification",async()=>expect(await classify(provider(valid),{title:"Public command"})).toEqual(valid));
+it.each([{...valid,recommendedEffects:{...valid.recommendedEffects,grid:16}},{...valid,recommendedEffects:{...valid.recommendedEffects,cascadeRisk:21}},{...valid,actionCategory:"invent_evidence"},{...valid,secret:"private"}])("rejects invalid or over-bound recommendations",async output=>expect(await classify(provider(output),{})).toBeNull());
+it("falls back with no configured provider or provider failure",async()=>{vi.stubEnv("AI_PROVIDER","");expect(configuredProvider()).toBeNull();expect(await classify(null,{})).toBeNull();expect(await classify({classifyAction:async()=>{throw new Error("offline");},generateNarrative:async()=>null},{})).toBeNull();});
+it("times out a hanging provider without blocking gameplay",async()=>{vi.useFakeTimers();const pending=boundedCall(()=>new Promise(()=>{}),classificationSchema,50);await vi.advanceTimersByTimeAsync(51);expect(await pending).toBeNull();});
+it("rejects a secret-leaking or invented narrative and accepts only allowed public copy",async()=>{expect(await narrative(provider({channel:"ORACLE SYSTEM",line:"Marcus delayed replacement until next quarter."}),["Public event."])).toBeNull();expect(await narrative(provider({channel:"ORACLE SYSTEM",line:"Public event."}),["Public event."])).toEqual({channel:"ORACLE SYSTEM",line:"Public event."});});
